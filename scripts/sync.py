@@ -46,6 +46,9 @@ class Mirror:
         self.out = Path(destination)
         (self.out / 'assets').mkdir(parents=True, exist_ok=True)
         self.loader = loader
+        custom_css = (BASE / 'scripts/mirror.css').read_bytes()
+        self.override_css = 'assets/mirror-' + hashlib.sha256(custom_css).hexdigest()[:24] + '.css'
+        (self.out / self.override_css).write_bytes(custom_css)
         self.assets = {}
         self.pages = {}
         self.labels = {}
@@ -186,7 +189,7 @@ class Mirror:
         body = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
                 '<meta name="viewport" content="width=device-width,initial-scale=1">'
                 f'<title>{title}</title>' + ''.join(styles) +
-                f'<link rel="stylesheet" href="{prefix}assets/mirror.css"></head><body>'
+                f'<link rel="stylesheet" href="{prefix}{self.override_css}"></head><body>'
                 '<a class="skip" href="#main">Skip to content</a><header class="site-header">'
                 f'<nav aria-label="Main navigation">{nav}</nav></header>'
                 '<main id="main" class="' + html.escape(' '.join(shell), quote=True) + '">'
@@ -206,7 +209,6 @@ class Mirror:
             if mime != 'text/html' or self.page_path(final_url) != path or not soup.find('section'):
                 raise ValueError('Page changed or became inaccessible during synchronization')
             self.render(path, soup)
-        shutil.copyfile(BASE / 'scripts/mirror.css', self.out / 'assets/mirror.css')
         (self.out / '.nojekyll').touch()
         # Excludes timestamps and volatile Google image URLs, so equal content has equal digest.
         files = {str(p.relative_to(self.out)): hashlib.sha256(p.read_bytes()).hexdigest()

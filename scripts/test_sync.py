@@ -1,4 +1,6 @@
 import tempfile
+import hashlib
+from sync import BASE
 import unittest
 from pathlib import Path
 from sync import Mirror
@@ -74,6 +76,15 @@ class MirrorTests(unittest.TestCase):
             return page.encode(), 'text/html', url
         with tempfile.TemporaryDirectory() as directory:
             Mirror(CONFIG, directory, expiring).run()
+
+    def test_navigation_styles_have_content_addressed_url(self):
+        with tempfile.TemporaryDirectory() as directory:
+            mirror = Mirror(CONFIG, directory, loader)
+            mirror.run()
+            css = (BASE / 'scripts/mirror.css').read_bytes()
+            digest = hashlib.sha256(css).hexdigest()[:24]
+            self.assertIn('mirror-' + digest + '.css', (Path(directory) / 'index.html').read_text())
+            self.assertEqual((Path(directory) / mirror.override_css).read_bytes(), css)
 
     def test_nested_page_link_and_path_safety(self):
         with tempfile.TemporaryDirectory() as directory:
