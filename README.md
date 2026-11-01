@@ -61,4 +61,4 @@ python3 -m http.server --directory site
 
 有意删除或重命名五个受保护栏目，先改 `required_pages`；否则程序会安全停止，并保留线上旧版。轮播、搜索、折叠、新增第三方组件或大幅更换主题，应额外验收，不能假定 Google Sites 的全部应用功能都会转为静态网站。
 
-故障时先查看 Actions 运行结果；修复源站或程序后，在 Actions → Sync Google Sites to GitHub Pages → Run workflow 手动重试。仓库保存每次成功快照；恢复历史内容可通过恢复相应的 `site/` 快照并发布完成。源码和发布历史均在她的仓库中，撤销维护者协作权限不会改变网站归属。
+故障时先查看 Actions 运行结果；修复源站或程序后，在 Actions → Sync Google Sites to GitHub Pages → Run workflow 手动重试。内容需要回退时，优先在 Google Sites 的版本历史中恢复，然后重新 Publish，后续自动同步。仓库保存每次成功快照用于备份和排查；单独修改或回退 `site/`，下一次同步仍会被 Google Sites 的已发布版本覆盖。源码和发布历史均在她的仓库中，撤销维护者协作权限不会改变网站归属。
