@@ -38,14 +38,22 @@ jobs:
       - name: Test conversion safeguards
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Fetch published pages and validate all assets
+        id: sync
         run: python scripts/sync.py
-      - name: Save changed website content in repository history
+      - name: Record monthly synchronization health
+        if: ${{ always() }}
+        run: python scripts/health.py --outcome "${{ steps.sync.outcome }}"
+      - name: Save website content and monthly health history
+        if: ${{ always() }}
         run: |
-          git add -- site
+          git add -- .sync
+          if [ "${{ steps.sync.outcome }}" = "success" ]; then
+            git add -- site
+          fi
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'Sync published Google Sites content'
+            git commit -m 'Sync published content and monthly health record'
             git push
           fi
       - name: Configure Pages
