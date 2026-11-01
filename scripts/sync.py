@@ -10,9 +10,10 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urljoin, urlsplit
+from urllib.parse import parse_qs, unquote, urljoin, urlsplit, quote
 from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
+from validate import validate_site
 
 BASE = Path(__file__).resolve().parent.parent
 CSS_URL = re.compile(r'url\(\s*[\"\']?([^\)\"\']+)[\"\']?\s*\)')
@@ -61,7 +62,8 @@ class Mirror:
             path = parsed.path[len(self.prefix):].strip('/')
         else:
             return None
-        if any(part in ('..', '.') for part in unquote(path).split('/')):
+        path = unquote(path)
+        if any(part in ('..', '.') for part in path.split('/')):
             raise ValueError('Unsafe page path')
         return path
 
@@ -99,7 +101,7 @@ class Mirror:
                 continue
             if len(self.pages) >= 40:
                 raise ValueError('More than 40 pages found; review the source site')
-            url = self.source + ('/' + path if path else '')
+            url = self.source + ('/' + quote(path, safe='/') if path else '')
             data, mime, final_url = self.loader(url)
             if self.page_path(final_url) is None:
                 raise ValueError('Published source redirected away from Google Sites')
@@ -213,7 +215,7 @@ class Mirror:
         for path in self.pages:
             print('Mirroring', path or '(home)', flush=True)
             # Refresh each page just before copying its temporary Google image URLs.
-            url = self.source + ('/' + path if path else '')
+            url = self.source + ('/' + quote(path, safe='/') if path else '')
             data, mime, final_url = self.loader(url + '?mirror_refresh=' + str(time.time_ns()))
             soup = BeautifulSoup(data, 'html.parser')
             if mime != 'text/html' or self.page_path(final_url) != path or not soup.find('section'):
@@ -225,6 +227,7 @@ class Mirror:
                  for p in sorted(self.out.rglob('*')) if p.is_file()}
         manifest = {'source': self.source, 'pages': sorted(self.pages), 'files': files}
         (self.out / 'sync-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+        validate_site(self.out, self.old_hosts)
         print(f'Validated {len(self.pages)} pages and {len(self.assets)} asset URLs.')
 
 

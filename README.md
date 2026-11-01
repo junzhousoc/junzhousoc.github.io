@@ -12,14 +12,14 @@
 2. 仓库拥有者在 Settings → Pages → Build and deployment → Source 中选择 **GitHub Actions**。Custom domain 应为空，使用 github.io 地址。此包不生成 CNAME 文件，也不修改域名续费设置。
 3. 在 Actions 中打开 **Sync Google Sites to GitHub Pages** → **Run workflow**。首次执行成功后，打开 https://junzhousoc.github.io/ 检查各页面、图片及 CV。如果仓库有分支保护阻止机器人写入，需要拥有者调整规则或将“保存历史”步骤改为 PR 流程；不要把检查失败改成忽略。
 
-同步程序使用 GitHub 自动提供的 GITHUB_TOKEN，无须另存个人访问令牌。若通过第三方 GitHub 连接代为上传，还需该连接有目标仓库及 workflow 文件的写入权限；被邀请为协作者并不自动授予第三方应用访问权限。
+同步程序使用 GitHub 自动提供的短期 GITHUB_TOKEN，无须另存个人访问令牌。抓取前不在 Git 配置中保留凭据，写入令牌只传给最后的提交步骤；发布权限独立放在部署任务中。官方 Actions 固定到已核实的提交，Python 依赖固定版本及文件校验值。若通过第三方 GitHub 连接代为上传，还需该连接有目标仓库及 workflow 文件的写入权限；被邀请为协作者并不自动授予第三方应用访问权限。
 
 ## 自动同步的行为
 
 - 每两小时的第 23 分钟运行一次（UTC）；GitHub 可能延迟执行，并非即时发布。
 - 从公开发布站点的导航及正文链接发现页面，保留页面内容、原站样式及字体；图片、标签图标（favicon）、样式和字体保存为本地文件。标签图标沿用 Google Sites 已发布的原图，未来更换后也会自动同步；文件名按内容变化，避免浏览器一直显示旧图标。
 - 将源站和旧域名的内部链接改为 GitHub Pages 相对路径。首页与各栏目均可直接打开。
-- 只有完成所有页面和资源下载后才生成完整发布包；失败会阻止部署，线上保留上一版。
+- 只有完成所有页面和资源下载后，才核对文件清单、文件校验值、本地页面/图片/图标/样式/字体引用及不安全 HTML；失败会阻止部署，线上保留上一版。
 - 新内容保存到 `site/` 并提交到仓库，保留历史。文件按内容计算摘要，Google 临时图片 URL 改变不导致图片文件名改变。
 - CV 等 Google Drive 嵌入仍由 Google 提供，并附有单独打开的链接。请保持原文件的公开访问权限。
 - 固定保护五个已有栏目；如果有意删除或改名，需要同步修改 `sync-config.json` 的 `required_pages`。新增导航栏目会自动发现。
@@ -54,3 +54,11 @@ python3 -m http.server --directory site
 - https://developers.google.com/workspace/sites
 - https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
 - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
+
+## 使用范围与恢复
+
+文字、图片、链接、图标、当前五个栏目和新增公开页面属于已验证范围；新增页面须在已发布的导航或正文中有链接，程序才会发现。更换嵌入式 CV 时，应在 Google Sites 中更新文件引用并保持 Drive 文件公开。
+
+有意删除或重命名五个受保护栏目，先改 `required_pages`；否则程序会安全停止，并保留线上旧版。轮播、搜索、折叠、新增第三方组件或大幅更换主题，应额外验收，不能假定 Google Sites 的全部应用功能都会转为静态网站。
+
+故障时先查看 Actions 运行结果；修复源站或程序后，在 Actions → Sync Google Sites to GitHub Pages → Run workflow 手动重试。仓库保存每次成功快照；恢复历史内容可通过恢复相应的 `site/` 快照并发布完成。源码和发布历史均在她的仓库中，撤销维护者协作权限不会改变网站归属。

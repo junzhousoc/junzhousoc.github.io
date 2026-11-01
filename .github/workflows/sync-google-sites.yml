@@ -2,7 +2,6 @@ name: Sync Google Sites to GitHub Pages
 
 on:
   schedule:
-    # Every two hours, at minute 23, in UTC. GitHub schedules may be delayed.
     - cron: '23 */2 * * *'
   workflow_dispatch:
   push:
@@ -27,45 +26,50 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write
-      pages: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
-      - name: Install parser
-        run: python -m pip install -r requirements.txt
-      - name: Test conversion safeguards
+      - name: Install verified parser dependencies
+        run: python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+      - name: Test conversion and failure safeguards
         run: python -m unittest discover -s scripts -p 'test_*.py'
-      - name: Fetch published pages and validate all assets
+      - name: Fetch published site and validate every local reference
         id: sync
         run: python scripts/sync.py
       - name: Record monthly synchronization health
         if: ${{ always() }}
-        run: python scripts/health.py --outcome "${{ steps.sync.outcome }}"
-      - name: Save website content and monthly health history
+        env:
+          SYNC_OUTCOME: ${{ steps.sync.outcome }}
+        run: python3 scripts/health.py --outcome "$SYNC_OUTCOME"
+      - name: Save validated site and monthly health history
         if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYNC_OUTCOME: ${{ steps.sync.outcome }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           git add -- .sync
-          if [ "${{ steps.sync.outcome }}" = "success" ]; then
-            git add -- site
-          fi
+          if [ "$SYNC_OUTCOME" = "success" ]; then git add -- site; fi
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'Sync published content and monthly health record'
-            git push
+            git commit -m 'Sync validated site and monthly health record'
+            gh auth setup-git --hostname github.com
+            git push origin "HEAD:$DEFAULT_BRANCH"
           fi
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
       - name: Upload complete validated website
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           path: site
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       pages: write
       id-token: write
@@ -73,6 +77,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Publish on GitHub Pages
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Publish validated artifact
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
