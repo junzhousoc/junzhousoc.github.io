@@ -4,10 +4,11 @@ from sync import BASE
 import unittest
 from pathlib import Path
 from sync import Mirror
+from bs4 import BeautifulSoup
 
 SOURCE = 'https://sites.google.com/view/jun-zhou-'
 CONFIG = {'source_url': SOURCE, 'previous_domains': ['www.junzhou.space'], 'required_pages': ['about']}
-PAGE = '''<html><head><title>about</title><style nonce="volatile">body{color:black}</style></head>
+PAGE = '''<html><head><link rel="icon" type="image/png" href="https://sites.google.com/favicon.png"><title>about</title><style nonce="volatile">body{color:black}</style></head>
 <body><nav><a href="/view/jun-zhou-/about">about</a><a href="/view/jun-zhou-/research">research</a></nav>
 <div class="theme"><div><section><h1><div class="CjVfdc"><div class="PPhIP">Copy heading link</div><span>Jun Zhou</span></div></h1><p>Published biography</p>
 <a href="https://www.junzhou.space/research#article">Research</a>
@@ -16,6 +17,8 @@ PAGE = '''<html><head><title>about</title><style nonce="volatile">body{color:bla
 
 
 def loader(url):
+    if url.endswith('favicon.png'):
+        return b'fixture-icon', 'image/png', url
     if url.endswith('image.png'):
         return b'fixture-image', 'image/png', url
     return PAGE.encode(), 'text/html', url
@@ -70,7 +73,7 @@ class MirrorTests(unittest.TestCase):
         def expiring(url):
             if 'expired.png' in url:
                 raise OSError('Expired signed URL must not be used')
-            if url.endswith('image.png'):
+            if url.endswith(('image.png', 'favicon.png')):
                 return loader(url)
             page = PAGE if 'mirror_refresh=' in url else PAGE.replace('image.png', 'expired.png')
             return page.encode(), 'text/html', url
@@ -85,6 +88,28 @@ class MirrorTests(unittest.TestCase):
             digest = hashlib.sha256(css).hexdigest()[:24]
             self.assertIn('mirror-' + digest + '.css', (Path(directory) / 'index.html').read_text())
             self.assertEqual((Path(directory) / mirror.override_css).read_bytes(), css)
+
+    def test_original_icon_is_local_and_works_on_nested_pages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            mirror = Mirror(CONFIG, directory, loader)
+            mirror.run()
+            page = BeautifulSoup((Path(directory) / 'index.html').read_text(), 'html.parser')
+            icon = page.head.find('link', rel='icon')
+            expected = 'assets/' + hashlib.sha256(b'fixture-icon').hexdigest()[:24] + '.png'
+            self.assertEqual(icon['href'], expected)
+            self.assertEqual(icon['type'], 'image/png')
+            self.assertEqual((Path(directory) / expected).read_bytes(), b'fixture-icon')
+            mirror.render('nested/page', BeautifulSoup(PAGE, 'html.parser'))
+            nested = BeautifulSoup((Path(directory) / 'nested/page.html').read_text(), 'html.parser')
+            self.assertEqual(nested.head.find('link', rel='icon')['href'], '../' + expected)
+
+    def test_updated_icon_gets_a_new_cache_safe_url(self):
+        with tempfile.TemporaryDirectory() as directory:
+            mirror = Mirror(CONFIG, directory, loader)
+            first = mirror.asset('https://sites.google.com/favicon.png')
+            mirror.loader = lambda url: (b'updated-icon', 'image/png', url)
+            updated = mirror.asset('https://sites.google.com/new-favicon.png')
+            self.assertNotEqual(first, updated)
 
     def test_nested_page_link_and_path_safety(self):
         with tempfile.TemporaryDirectory() as directory:

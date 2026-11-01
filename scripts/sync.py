@@ -128,6 +128,16 @@ class Mirror:
         for image in soup.select('section img[src]'):
             self.asset(urljoin(self.source, image['src']))
         styles = []
+        # Keep the published site's favicon and touch icons, with content-based URLs.
+        for icon in soup.head.find_all('link', href=True):
+            rels = icon.get('rel', [])
+            if not set(rels) & {'icon', 'apple-touch-icon', 'apple-touch-icon-precomposed', 'mask-icon'}:
+                continue
+            local = self.asset(urljoin(self.source, icon['href']))
+            attrs = {key: icon[key] for key in ('rel', 'sizes', 'type', 'color') if icon.has_attr(key)}
+            attrs['href'] = local if local.startswith('data:') else prefix + local
+            attrs = {key: ' '.join(value) if isinstance(value, list) else str(value) for key, value in attrs.items()}
+            styles.append('<link ' + ' '.join(key + '="' + html.escape(value, quote=True) + '"' for key, value in attrs.items()) + '>')
         for style in soup.head.find_all('style'):
             css = CSS_URL.sub(lambda m: 'url(' + prefix + self.asset(urljoin(self.source, m.group(1))) + ')', style.get_text())
             styles.append('<style>' + css + '</style>')
