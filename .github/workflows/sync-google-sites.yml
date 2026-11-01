@@ -34,7 +34,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install verified parser dependencies
-        run: python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r requirements.txt
       - name: Test conversion and failure safeguards
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Fetch published site and validate every local reference
