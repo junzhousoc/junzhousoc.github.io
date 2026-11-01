@@ -225,7 +225,7 @@ class Mirror:
         # Excludes timestamps and volatile Google image URLs, so equal content has equal digest.
         files = {str(p.relative_to(self.out)): hashlib.sha256(p.read_bytes()).hexdigest()
                  for p in sorted(self.out.rglob('*')) if p.is_file()}
-        manifest = {'source': self.source, 'pages': sorted(self.pages), 'files': files}
+        manifest = {'schema': 1, 'source': self.source, 'pages': sorted(self.pages), 'files': files}
         (self.out / 'sync-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
         validate_site(self.out, self.old_hosts)
         print(f'Validated {len(self.pages)} pages and {len(self.assets)} asset URLs.')
