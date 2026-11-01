@@ -1,0 +1,4 @@
+__pycache__/
+.venv/
+.sync-*/
+.DS_Store
