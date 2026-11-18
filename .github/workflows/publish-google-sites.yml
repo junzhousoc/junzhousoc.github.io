@@ -2,8 +2,7 @@ name: Sync Google Sites to GitHub Pages
 
 on:
   schedule:
-    - cron: '7 * * * *'
-    - cron: '37 * * * *'
+    - cron: '23,53 * * * *'
   workflow_dispatch:
   push:
     branches: [master]
@@ -11,7 +10,7 @@ on:
       - 'scripts/**'
       - 'sync-config.json'
       - 'requirements.txt'
-      - '.github/workflows/sync-google-sites.yml'
+      - '.github/workflows/publish-google-sites.yml'
 
 permissions:
   contents: read
