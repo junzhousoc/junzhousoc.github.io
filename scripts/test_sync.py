@@ -111,6 +111,27 @@ class MirrorTests(unittest.TestCase):
             updated = mirror.asset('https://sites.google.com/new-favicon.png')
             self.assertNotEqual(first, updated)
 
+    def test_base_styles_remain_before_theme_and_local_overrides(self):
+        changed = PAGE.replace('<style nonce="volatile">body{color:black}</style>',
+            '<style>p{font-size:12pt}</style>'
+            '<link rel="stylesheet" href="https://sites.google.com/base.css">'
+            '<style>p{font-size:11pt}</style>')
+        def styled(url):
+            if url.endswith('base.css'):
+                return b'p{font-size:16px}', 'text/css', url
+            if url.endswith(('image.png', 'favicon.png')):
+                return loader(url)
+            return changed.encode(), 'text/html', url
+        with tempfile.TemporaryDirectory() as directory:
+            Mirror(CONFIG, directory, styled).run()
+            head = BeautifulSoup((Path(directory) / 'index.html').read_text(), 'html.parser').head
+            cascade = [element for element in head.find_all(['style', 'link'])
+                       if element.name == 'style' or 'stylesheet' in element.get('rel', [])]
+            self.assertEqual(cascade[0].get_text(), 'p{font-size:12pt}')
+            self.assertEqual(cascade[1].name, 'link')
+            self.assertEqual(cascade[2].get_text(), 'p{font-size:11pt}')
+            self.assertIn('mirror-', cascade[3]['href'])
+
     def test_nested_page_link_and_path_safety(self):
         with tempfile.TemporaryDirectory() as directory:
             mirror = Mirror(CONFIG, directory, loader)

@@ -2,7 +2,7 @@ name: Sync Google Sites to GitHub Pages
 
 on:
   schedule:
-    - cron: '23 */2 * * *'
+    - cron: '17,47 * * * *'
   workflow_dispatch:
   push:
     branches: [master]
@@ -24,6 +24,8 @@ jobs:
     if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      site_changed: ${{ steps.sync.outputs.changed }}
     permissions:
       contents: write
     steps:
@@ -40,7 +42,13 @@ jobs:
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Fetch published site and validate every local reference
         id: sync
-        run: python scripts/sync.py
+        run: |
+          python scripts/sync.py
+          if git diff --quiet -- site; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Record monthly synchronization health
         if: ${{ always() }}
         env:
@@ -63,12 +71,14 @@ jobs:
             git push origin "HEAD:$DEFAULT_BRANCH"
           fi
       - name: Upload complete validated website
+        if: steps.sync.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           path: site
 
   deploy:
     needs: build
+    if: needs.build.result == 'success' && (needs.build.outputs.site_changed == 'true' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

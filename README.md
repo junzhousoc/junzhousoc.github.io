@@ -1,6 +1,6 @@
 # Google Sites → GitHub Pages
 
-日常维护：在 Google Sites 编辑 → 点击“发布”。程序约每两小时读取已发布内容，并更新 https://junzhousoc.github.io/ 。不读取草稿，不需要共享 Google 密码或 GitHub 密码。
+日常维护：在 Google Sites 编辑 → 点击“发布”。程序配置为每半小时检查已发布内容，有变化时更新 https://junzhousoc.github.io/ 。不读取草稿，不需要共享 Google 密码或 GitHub 密码。
 
 来源：https://sites.google.com/view/jun-zhou-
 
@@ -16,12 +16,12 @@
 
 ## 自动同步的行为
 
-- 每两小时的第 23 分钟运行一次（UTC）；GitHub 可能延迟执行，并非即时发布。
+- 每小时第 17 和第 47 分钟申请运行（UTC）。这是尽力执行的 GitHub 定时配置，不是同步时限保证；已观察到平台延迟或漏触发后相隔数小时才运行。若需要立即更新，请使用下方手动同步入口。页面无变化时不重复部署。
 - 从公开发布站点的导航及正文链接发现页面，保留页面内容、原站样式及字体；图片、标签图标（favicon）、样式和字体保存为本地文件。标签图标沿用 Google Sites 已发布的原图，未来更换后也会自动同步；文件名按内容变化，避免浏览器一直显示旧图标。
 - 将源站和旧域名的内部链接改为 GitHub Pages 相对路径。首页与各栏目均可直接打开。
 - 只有完成所有页面和资源下载后，才核对文件清单、文件校验值、本地页面/图片/图标/样式/字体引用及不安全 HTML；失败会阻止部署，线上保留上一版。
 - 新内容保存到 `site/` 并提交到仓库，保留历史。文件按内容计算摘要，Google 临时图片 URL 改变不导致图片文件名改变。
-- CV 等 Google Drive 嵌入仍由 Google 提供，并附有单独打开的链接。请保持原文件的公开访问权限。
+- CV 等 Google Drive 嵌入仍由 Google 提供，并附有单独打开的链接。若替换同一个 Drive 文件的内容，CV 可立即变化，而 Research 等静态页面仍需等待同步；CV 已更新不代表其他页面已同步。请保持原文件的公开访问权限。
 - 固定保护五个已有栏目；如果有意删除或改名，需要同步修改 `sync-config.json` 的 `required_pages`。新增导航栏目会自动发现。
 
 ## 长期运行与故障
@@ -62,3 +62,9 @@ python3 -m http.server --directory site
 有意删除或重命名五个受保护栏目，先改 `required_pages`；否则程序会安全停止，并保留线上旧版。轮播、搜索、折叠、新增第三方组件或大幅更换主题，应额外验收，不能假定 Google Sites 的全部应用功能都会转为静态网站。
 
 故障时先查看 Actions 运行结果；修复源站或程序后，在 Actions → Sync Google Sites to GitHub Pages → Run workflow 手动重试。内容需要回退时，优先在 Google Sites 的版本历史中恢复，然后重新 Publish，后续自动同步。仓库保存每次成功快照用于备份和排查；单独修改或回退 `site/`，下一次同步仍会被 Google Sites 的已发布版本覆盖。源码和发布历史均在她的仓库中，撤销维护者协作权限不会改变网站归属。
+
+## 立即同步与排版
+
+发布后需要立即更新时，打开 https://github.com/junzhousoc/junzhousoc.github.io/actions/workflows/sync-google-sites.yml ，点击 Run workflow，选择 master，再确认运行。手动触发绕过 schedule 的等待，但仍需排队并完成运行；以成功记录及正式页面为准。稳定的自动时限需要独立触发器，当前没有增加外部服务或长期密钥。
+
+同步保留 Google Sites 中基础样式表与主题覆盖样式的原始顺序。若顺序被交换，段落的默认字号和行距会被覆盖，即使文字本身的字体名称相同，排版也会不同。此情况已加入回归检查。

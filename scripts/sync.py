@@ -130,22 +130,24 @@ class Mirror:
         for image in soup.select('section img[src]'):
             self.asset(urljoin(self.source, image['src']))
         styles = []
-        # Keep the published site's favicon and touch icons, with content-based URLs.
-        for icon in soup.head.find_all('link', href=True):
-            rels = icon.get('rel', [])
-            if not set(rels) & {'icon', 'apple-touch-icon', 'apple-touch-icon-precomposed', 'mask-icon'}:
+        # Preserve the original CSS cascade: base sheets must stay before theme overrides.
+        for node in soup.head.find_all(['style', 'link']):
+            if node.name == 'style':
+                css = CSS_URL.sub(lambda m: 'url(' + prefix + self.asset(urljoin(self.source, m.group(1))) + ')', node.get_text())
+                styles.append('<style>' + css + '</style>')
                 continue
-            local = self.asset(urljoin(self.source, icon['href']))
-            attrs = {key: icon[key] for key in ('rel', 'sizes', 'type', 'color') if icon.has_attr(key)}
-            attrs['href'] = local if local.startswith('data:') else prefix + local
-            attrs = {key: ' '.join(value) if isinstance(value, list) else str(value) for key, value in attrs.items()}
-            styles.append('<link ' + ' '.join(key + '="' + html.escape(value, quote=True) + '"' for key, value in attrs.items()) + '>')
-        for style in soup.head.find_all('style'):
-            css = CSS_URL.sub(lambda m: 'url(' + prefix + self.asset(urljoin(self.source, m.group(1))) + ')', style.get_text())
-            styles.append('<style>' + css + '</style>')
-        for link in soup.head.select('link[rel="stylesheet"]'):
-            local = self.asset(urljoin(self.source, link['href']))
-            styles.append('<link rel="stylesheet" href="' + prefix + local + '">')
+            if not node.get('href'):
+                continue
+            rels = node.get('rel', [])
+            if 'stylesheet' in rels:
+                local = self.asset(urljoin(self.source, node['href']))
+                styles.append('<link rel="stylesheet" href="' + prefix + local + '">')
+            elif set(rels) & {'icon', 'apple-touch-icon', 'apple-touch-icon-precomposed', 'mask-icon'}:
+                local = self.asset(urljoin(self.source, node['href']))
+                attrs = {key: node[key] for key in ('rel', 'sizes', 'type', 'color') if node.has_attr(key)}
+                attrs['href'] = local if local.startswith('data:') else prefix + local
+                attrs = {key: ' '.join(value) if isinstance(value, list) else str(value) for key, value in attrs.items()}
+                styles.append('<link ' + ' '.join(key + '=\"' + html.escape(value, quote=True) + '\"' for key, value in attrs.items()) + '>')
         content = BeautifulSoup(''.join(str(section) for section in soup.find_all('section')), 'html.parser')
         for tag in content.find_all(['script', 'noscript']):
             tag.decompose()
