@@ -2,7 +2,8 @@ name: Sync Google Sites to GitHub Pages
 
 on:
   schedule:
-    - cron: '17,47 * * * *'
+    - cron: '7 * * * *'
+    - cron: '37 * * * *'
   workflow_dispatch:
   push:
     branches: [master]
@@ -42,7 +43,11 @@ jobs:
         run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Fetch published site and validate every local reference
         id: sync
+        env:
+          TRIGGER_EVENT: ${{ github.event_name }}
+          TRIGGER_SCHEDULE: ${{ github.event.schedule || 'not-scheduled' }}
         run: |
+          python3 -c 'import os,datetime; print("Trigger:", os.environ["TRIGGER_EVENT"], "Schedule:", os.environ["TRIGGER_SCHEDULE"], "UTC:", datetime.datetime.now(datetime.timezone.utc).isoformat())'
           python scripts/sync.py
           if git diff --quiet -- site; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
