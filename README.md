@@ -68,3 +68,5 @@ python3 -m http.server --directory site
 发布后需要立即更新时，打开 https://github.com/junzhousoc/junzhousoc.github.io/actions/workflows/sync-google-sites.yml ，点击 Run workflow，选择 master，再确认运行。手动触发绕过 schedule 的等待，但仍需排队并完成运行；以成功记录及正式页面为准。稳定的自动时限需要独立触发器，当前没有增加外部服务或长期密钥。
 
 同步保留 Google Sites 中基础样式表与主题覆盖样式的原始顺序。若顺序被交换，段落的默认字号和行距会被覆盖，即使文字本身的字体名称相同，排版也会不同。此情况已加入回归检查。
+
+静态导航桌面高度与原站对齐为约 56px，链接左右各 12px 留白、项目间 2px，因此文字之间的间距约 26px。窄屏允许换行以防止横向溢出。
